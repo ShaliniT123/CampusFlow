@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { api } from "./api";
+import { supabase } from "./supabase";
 import "./styles.css";
 
 const navItems = [
@@ -14,6 +15,8 @@ const navItems = [
 
 function App() {
   const [page, setPage] = useState("dashboard");
+  const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [student, setStudent] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [automations, setAutomations] = useState([]);
@@ -39,8 +42,25 @@ function App() {
   }
 
   useEffect(() => {
-    loadAll();
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthReady(true);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setStudent(null);
+      setTasks([]);
+      setAutomations([]);
+      if (nextSession) window.setTimeout(loadAll, 0);
+    });
+
+    return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (session) loadAll();
+  }, [session?.user?.id]);
 
   function showToast(message) {
     setToast(message);
@@ -50,9 +70,9 @@ function App() {
 
   const pendingTasks = tasks.filter((task) => task.status !== "completed");
 
-  if (loading) {
-    return <div className="loading-screen">Loading CampusFlow…</div>;
-  }
+  if (!authReady) return <div className="loading-screen">Loading CampusFlow…</div>;
+  if (!session) return <AuthPage />;
+  if (loading) return <div className="loading-screen">Loading your CampusFlow account…</div>;
 
   return (
     <div className="app-shell">
@@ -86,7 +106,7 @@ function App() {
       </aside>
 
       <main className="main-content">
-        <TopBar student={student} pendingTasks={pendingTasks.length} />
+        <TopBar student={student} pendingTasks={pendingTasks.length} onSignOut={() => supabase.auth.signOut()} />
 
         {!student && page !== "profile" ? (
           <Onboarding onSaved={(saved) => { setStudent(saved); setPage("dashboard"); showToast("Profile created."); }} />
@@ -128,7 +148,83 @@ function App() {
   );
 }
 
-function TopBar({ student, pendingTasks }) {
+
+function AuthPage() {
+  const [mode, setMode] = useState("signin");
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage("");
+    try {
+      if (mode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email: form.email,
+          password: form.password
+        });
+        if (error) throw error;
+        setMessage(data.session
+          ? "Account created. Complete your student profile."
+          : "Account created. Check your email to confirm it, then sign in.");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: form.email,
+          password: form.password
+        });
+        if (error) throw error;
+      }
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="auth-screen">
+      <div className="auth-brand">
+        <div className="brand-mark">CF</div>
+        <div>
+          <h1>CampusFlow</h1>
+          <p>Every student gets a private dashboard, task list and automation history.</p>
+        </div>
+      </div>
+
+      <form className="panel auth-card form-stack" onSubmit={submit}>
+        <p className="eyebrow">Secure multi-user access</p>
+        <h2>{mode === "signin" ? "Welcome back" : "Create student account"}</h2>
+
+        <Field label="Email address">
+          <input required type="email" value={form.email}
+            onChange={(event) => setForm({ ...form, email: event.target.value })}
+            placeholder="student@gmail.com" />
+        </Field>
+
+        <Field label="Password">
+          <input required type="password" minLength="6" value={form.password}
+            onChange={(event) => setForm({ ...form, password: event.target.value })}
+            placeholder="Minimum 6 characters" />
+        </Field>
+
+        {message && <div className="error-box">{message}</div>}
+
+        <button className="primary-btn full" disabled={busy}>
+          {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+        </button>
+
+        <button type="button" className="text-btn"
+          onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setMessage(""); }}>
+          {mode === "signin" ? "New student? Create an account" : "Already registered? Sign in"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function TopBar({ student, pendingTasks, onSignOut }) {
   return (
     <header className="topbar">
       <div>
@@ -138,6 +234,7 @@ function TopBar({ student, pendingTasks }) {
       <div className="topbar-actions">
         <div className="notification">🔔 <span>{pendingTasks}</span></div>
         <div className="avatar">{student?.name?.slice(0, 2).toUpperCase() || "ST"}</div>
+        <button className="secondary-btn" onClick={onSignOut}>Sign out</button>
       </div>
     </header>
   );

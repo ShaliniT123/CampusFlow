@@ -663,3 +663,22 @@ button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
   .automation-row.head { display: none; }
   .result-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+
+.auth-screen {
+  min-height: 100vh;
+  padding: 40px 20px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 28px;
+}
+.auth-brand {
+  width: min(520px, 100%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.auth-brand h1 { font-size: 34px; }
+.auth-brand p { margin-top: 7px; color: var(--muted); line-height: 1.55; }
+.auth-card { width: min(520px, 100%); padding: 30px; }

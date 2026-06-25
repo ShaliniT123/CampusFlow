@@ -1,0 +1,26 @@
+{
+  "student": null,
+  "tasks": [
+    {
+      "id": "sample-1",
+      "title": "DBMS Normalization Assignment",
+      "subject": "DBMS",
+      "deadline": "2026-06-28T18:00",
+      "reminderTime": "2026-06-27T18:00",
+      "addToCalendar": true,
+      "status": "pending",
+      "createdAt": "2026-06-25T09:00:00.000Z"
+    },
+    {
+      "id": "sample-2",
+      "title": "Operating Systems Revision",
+      "subject": "Operating Systems",
+      "deadline": "2026-06-29T17:00",
+      "reminderTime": "2026-06-29T09:00",
+      "addToCalendar": true,
+      "status": "pending",
+      "createdAt": "2026-06-25T09:10:00.000Z"
+    }
+  ],
+  "automations": []
+}

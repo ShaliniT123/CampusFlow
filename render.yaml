@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: campusflow-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: FRONTEND_URLS
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      - key: N8N_DEADLINE_WEBHOOK_URL
+        sync: false
+      - key: N8N_NOTICE_WEBHOOK_URL
+        sync: false
+      - key: N8N_ATTENDANCE_WEBHOOK_URL
+        sync: false

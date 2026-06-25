@@ -1,0 +1,168 @@
+{
+  "name": "CampusFlow - Notice Broadcast",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "campusflow-notice",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "notice-webhook",
+      "name": "Notice Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "summaryText",
+              "value": "={{ $json.body.aiSummary.join('\\n\u2022 ') }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "firstPhone",
+              "value": "={{ $json.body.phoneList[0] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notice-set",
+      "name": "Prepare Notice Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list",
+          "cachedResultName": "Primary"
+        },
+        "start": "={{ $('Notice Webhook').item.json.body.eventDate }}",
+        "end": "={{ new Date(new Date($('Notice Webhook').item.json.body.eventDate).getTime() + 60 * 60 * 1000).toISOString() }}",
+        "additionalFields": {
+          "description": "=\u2022 {{ $json.summaryText }}",
+          "summary": "={{ $('Notice Webhook').item.json.body.eventTitle }}"
+        }
+      },
+      "id": "notice-calendar",
+      "name": "Create Notice Calendar Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -20,
+        -80
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_GOOGLE_CREDENTIAL_ID",
+          "name": "Google Calendar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "whatsapp:+14155238886",
+        "to": "=whatsapp:{{ $('Prepare Notice Data').item.json.firstPhone }}",
+        "message": "=\ud83d\udce3 Notice Alert\n\u2022 {{ $('Prepare Notice Data').item.json.summaryText }}\n\nAdded to your calendar! \u2014 CampusFlow",
+        "options": {}
+      },
+      "id": "notice-twilio",
+      "name": "Send Notice WhatsApp",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        220,
+        -80
+      ],
+      "credentials": {
+        "twilioApi": {
+          "id": "REPLACE_WITH_YOUR_TWILIO_CREDENTIAL_ID",
+          "name": "Twilio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\":true,\"message\":\"Notice workflow completed\"}",
+        "options": {}
+      },
+      "id": "notice-response",
+      "name": "Respond to Backend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        460,
+        -80
+      ]
+    }
+  ],
+  "connections": {
+    "Notice Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Notice Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Notice Data": {
+      "main": [
+        [
+          {
+            "node": "Create Notice Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Notice Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Send Notice WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Notice WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Respond to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

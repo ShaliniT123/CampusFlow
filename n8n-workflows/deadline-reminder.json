@@ -1,0 +1,180 @@
+{
+  "name": "CampusFlow - Deadline Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "campusflow-deadline",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "deadline-webhook",
+      "name": "Deadline Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "calendarTitle",
+              "value": "={{ $json.body.taskTitle }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "calendarStart",
+              "value": "={{ $json.body.deadline }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "calendarDescription",
+              "value": "=CampusFlow deadline for {{ $json.body.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "whatsappMessage",
+              "value": "=Hi {{ $json.body.studentName }}! Your {{ $json.body.subject }} task \"{{ $json.body.taskTitle }}\" has been added to your calendar. Deadline: {{ $json.body.deadline }}. \u2014 CampusFlow",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "deadline-set",
+      "name": "Prepare Deadline Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list",
+          "cachedResultName": "Primary"
+        },
+        "start": "={{ $json.calendarStart }}",
+        "end": "={{ new Date(new Date($json.calendarStart).getTime() + 60 * 60 * 1000).toISOString() }}",
+        "additionalFields": {
+          "description": "={{ $json.calendarDescription }}",
+          "summary": "={{ $json.calendarTitle }}"
+        }
+      },
+      "id": "deadline-calendar",
+      "name": "Create Calendar Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -20,
+        -80
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_GOOGLE_CREDENTIAL_ID",
+          "name": "Google Calendar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "whatsapp:+14155238886",
+        "to": "=whatsapp:{{ $('Deadline Webhook').item.json.body.phone }}",
+        "message": "={{ $('Prepare Deadline Data').item.json.whatsappMessage }}",
+        "options": {}
+      },
+      "id": "deadline-twilio",
+      "name": "Send WhatsApp Confirmation",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        220,
+        -80
+      ],
+      "credentials": {
+        "twilioApi": {
+          "id": "REPLACE_WITH_YOUR_TWILIO_CREDENTIAL_ID",
+          "name": "Twilio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\":true,\"message\":\"Deadline workflow completed\"}",
+        "options": {}
+      },
+      "id": "deadline-response",
+      "name": "Respond to Backend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        460,
+        -80
+      ]
+    }
+  ],
+  "connections": {
+    "Deadline Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Deadline Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Deadline Data": {
+      "main": [
+        [
+          {
+            "node": "Create Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Respond to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
